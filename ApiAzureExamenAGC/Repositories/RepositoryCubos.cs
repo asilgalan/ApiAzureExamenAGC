@@ -41,13 +41,20 @@ namespace ApiAzureExamenAGC.Repositories
             return await this.context.usuarios.MaxAsync(x => x.Id) + 1;
         }
 
-        public async Task insertarUsuarioAsync(Usuario usuario)
-        {
+   public async Task InsertarUsuarioAsync(Usuario usuario, IFormFile imagen)
+{
+    usuario.Id = await this.maxIdUsuarioAsync();
 
-            usuario.Id = await this.maxIdUsuarioAsync();
-            await this.context.usuarios.AddAsync(usuario);
-            await this.context.SaveChangesAsync();
-        }
+    if (imagen != null)
+    {
+        // Sube la imagen al blob y guarda solo el nombre
+        string nombreBlob = await this.services.SubirImagenAsync("usuarios", imagen);
+        usuario.Imagen = nombreBlob; // guarda "leonard.jpg" en BD
+    }
+
+    await this.context.usuarios.AddAsync(usuario);
+    await this.context.SaveChangesAsync();
+}
 
         public async Task<Usuario> LogInUsuarioAsync(string email, string pass)
         {
@@ -90,10 +97,7 @@ namespace ApiAzureExamenAGC.Repositories
                 if (!c.Imagen.StartsWith("http"))
                 {
                     string imagePath = c.Imagen;
-                    if (!c.Imagen.StartsWith("CUBOS"))
-                    {
-                        imagePath = "CUBOS/" + imagePath;
-                    }
+                
 
                     c.Imagen = containerUrl + "/" + imagePath;
                 }
@@ -104,7 +108,7 @@ namespace ApiAzureExamenAGC.Repositories
         }
         public async Task<UsuarioModel> PerfilBlobAsync(int id)
         {
-               Usuario usuario = await this.context.usuarios
+            Usuario usuario = await this.context.usuarios
                 .Where(x => x.Id == id)
                 .FirstOrDefaultAsync();
 
@@ -116,29 +120,14 @@ namespace ApiAzureExamenAGC.Repositories
                 Imagen = usuario.Imagen
             };
 
-            if (!string.IsNullOrEmpty(usuario.Imagen))
+            if (!string.IsNullOrEmpty(usuario.Imagen) && !usuario.Imagen.StartsWith("http"))
             {
-                string containerUrl =  this.services.GetContainerUrlAsync("usuarios");
-
-                if (!usuario.Imagen.StartsWith("http"))
-                {
-                    string imagePath = usuario.Imagen;
-                    if (!imagePath.StartsWith("USUARIOS/"))
-                    {
-                        imagePath = "USUARIOS/" + imagePath;
-                    }
-
-                    model.Imagen = containerUrl + "/" + imagePath;
-                }
-                else
-                {
-                    model.Imagen = usuario.Imagen;
-                }
+                // Genera URL privada con SAS que expira en 1 hora
+                model.Imagen = this.services.GenerarUrlTemporalUsuario("usuarios", usuario.Imagen);
             }
 
             return model;
         }
-
     }
 }
 

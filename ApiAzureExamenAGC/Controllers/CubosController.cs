@@ -30,7 +30,7 @@ namespace ApiAzureExamenAGC.Controllers
         return await this.repo.GetCubosAsync();
     }
 
-    [HttpGet("LibrosBlob")]
+    [HttpGet("CubosBlob")]
     public async Task<ActionResult<List<Cubo>>> GetCubosBlob()
     {
         return await this.repo.GetCubosBlobAsync();
@@ -42,13 +42,24 @@ namespace ApiAzureExamenAGC.Controllers
         return await this.repo.getCubosByMarca(marca);
     }
 
-    [HttpPost]
-    public async Task InsertarUsuario(Usuario usuario)
-    {
-        await this.repo.insertarUsuarioAsync(usuario);
-    }
+        [HttpPost]
+        [Route("[action]")]
+        public async Task InsertarUsuario([FromForm] string nombre,
+                                         [FromForm] string email,
+                                         [FromForm] string password,
+                                         IFormFile imagen)
+        {
+            Usuario usuario = new Usuario
+            {
+                Nombre = nombre,
+                Email = email,
+                Password = password
+            };
 
-    [Authorize]
+            await this.repo.InsertarUsuarioAsync(usuario, imagen);
+        }
+
+       [Authorize]
     [HttpGet]
     [Route("[action]")]
     public async Task<ActionResult<UsuarioModel>> Perfil()
